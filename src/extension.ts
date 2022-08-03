@@ -1,25 +1,45 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
+import * as matter from "gray-matter";
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-	
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "nitro-intelligence" is now active!');
+  // Get config
+  /**
+   * {
+   *    strict: boolean // make sure every markdown file need to have type key-value in frontmatter
+   * }
+   */
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('nitro-intelligence.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from nitro-intelligence!');
-	});
+  const mdWatcher = vscode.workspace.createFileSystemWatcher(
+    "**/*.{md,mdx}",
+    true,
+    false,
+    true
+  );
 
-	context.subscriptions.push(disposable);
+  mdWatcher.onDidChange(async (uri) => {
+    const readFile = await vscode.workspace.fs.readFile(uri);
+    const readStr = Buffer.from(readFile).toString("utf8");
+
+    const pathArr = uri.path.split("/");
+    const fileNameArr = pathArr[pathArr.length - 1].split(".");
+    const fileExtension = fileNameArr[fileNameArr.length - 1];
+
+    if (fileExtension === "md") {
+      const { data } = matter(readStr);
+
+      if ("type" in data) {
+        console.log("hi type", data.type);
+      } else {
+        // if strict === true, we need to alarm that frontmatter doesn't have type key
+      }
+    }
+
+    // Recognize md and mdx
+    // md -> safely utilize frontmatter
+    // mdx -> make sure we can handle export prop and frontmatter at the same time
+  });
+
+  context.subscriptions.push(mdWatcher);
 }
 
 // this method is called when your extension is deactivated
