@@ -12,7 +12,7 @@
   "activationEvents": [
     "onCommand:nitro-intelligence.helloWorld",
     "onLanguage:markdown",
-    "workspaceContains:nitro.config.*"
+    "workspaceContains:mdguard.config.*"
   ],
   "main": "./out/extension.js",
   "contributes": {
