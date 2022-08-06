@@ -1,4 +1,4 @@
-# nitro-intelligence 
+# MD Guard
 
 A VScode intelligence for markdown or mdx file.
 

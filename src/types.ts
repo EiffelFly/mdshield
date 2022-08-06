@@ -1,12 +1,11 @@
-export type Config = {
+export type MdGuardConfig = {
   strict: boolean;
-  types: Type[];
+  types: MdGuardType;
 };
 
-export type Type = {
-  [k: string]: string | Type;
+export type MdGuardType = {
+  [k: string]: string | MdGuardType;
 };
-
-export type ConfigModule = {
-  default: Config;
+export type Meta = {
+  [k: string]: Meta | string | number | boolean | undefined;
 };
