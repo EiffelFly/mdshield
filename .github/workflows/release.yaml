@@ -15,5 +15,5 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           release-type: node
           command: manifest
-          config-file: release-please/config.json
-          manifest-file: release-please/manifest.json
+          config-file: release/config.json
+          manifest-file: release/manifest.json
