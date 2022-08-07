@@ -119,8 +119,8 @@ const updateDiagnostics = (
   collection: vscode.DiagnosticCollection,
   mdGuardConfig: MdGuardConfig
 ): void => {
-  console.log("hi", document);
   collection.clear();
+  let diagnostics: vscode.Diagnostic[] = [];
   if (document) {
     const fileExtension = getFileExtension(document);
     if (fileExtension === "md") {
@@ -142,19 +142,21 @@ const updateDiagnostics = (
           ]);
         }
       } else {
-        nonStrictValidate(document, mdGuardConfig.types, data, collection);
+        if (!("type" in data)) {
+          return;
+        }
+        nonStrictValidate(
+          document,
+          mdGuardConfig.types[data.type as string] as MdGuardType,
+          data,
+          diagnostics
+        );
+        collection.set(document.uri, diagnostics);
       }
     }
   } else {
     collection.clear();
   }
-};
-
-const getFileExtension = (document: vscode.TextDocument): string => {
-  const pathArr = document.uri.path.split("/");
-  const fileNameArr = pathArr[pathArr.length - 1].split(".");
-  const fileExtension = fileNameArr[fileNameArr.length - 1];
-  return fileExtension;
 };
 
 const strictValidate = (type: MdGuardType, meta: Meta) => {};
@@ -184,56 +186,66 @@ const strictValidate = (type: MdGuardType, meta: Meta) => {};
 
 const nonStrictValidate = (
   document: vscode.TextDocument,
-  types: MdGuardType,
+  type: MdGuardType,
   meta: Meta,
-  collection: vscode.DiagnosticCollection
+  diagnostics: vscode.Diagnostic[]
 ) => {
-  if (!("type" in meta)) {
-    return;
-  }
-
-  const currentMdType = types[meta.type as string] as MdGuardType;
-  let diagnostics: vscode.Diagnostic[] = [];
-
   Object.entries(meta).forEach(([k, v]) => {
-    if (!(k in currentMdType)) {
-      console.log("not found", k);
+    if (!(k in type)) {
       return;
     }
 
-    const configType = currentMdType[k];
+    const configType = type[k];
     const valueType = typeof v;
 
-    if (valueType === "object") {
-      if (typeof configType !== "object") {
-        getTextPosition(document, k);
-        diagnostics.push({
-          code: "",
-          range: new vscode.Range(
-            new vscode.Position(3, 4),
-            new vscode.Position(3, 10)
-          ),
-          severity: vscode.DiagnosticSeverity.Error,
-          source: "",
-          message: `The field ${k}'s type should be ${configType}`,
-        });
-        return;
-      } else {
-        nonStrictValidate(
-          document,
-          configType as MdGuardType,
-          v as Meta,
-          collection
-        );
-        return;
-      }
+    if (typeof configType === "object" && valueType === "object") {
+      nonStrictValidate(
+        document,
+        configType as MdGuardType,
+        v as Meta,
+        diagnostics
+      );
+      return;
     }
 
-    const configTypeList: string[] = (configType as string).split("|");
+    if (typeof configType !== "object" && valueType === "object") {
+      const textPosition = getTextPosition(document, k);
+      diagnostics.push({
+        code: "",
+        range: new vscode.Range(
+          new vscode.Position(textPosition.line, textPosition.start),
+          new vscode.Position(textPosition.line, textPosition.end)
+        ),
+        severity: vscode.DiagnosticSeverity.Error,
+        source: "",
+        message: `The field ${k}'s type should be ${configType}`,
+      });
+      return;
+    }
+
+    if (typeof configType === "object" && valueType !== "object") {
+      const textPosition = getTextPosition(document, k);
+      diagnostics.push({
+        code: "",
+        range: new vscode.Range(
+          new vscode.Position(textPosition.line, textPosition.start),
+          new vscode.Position(textPosition.line, textPosition.end)
+        ),
+        severity: vscode.DiagnosticSeverity.Error,
+        source: "",
+        message: `The field ${k}'s type should be ${configType}`,
+      });
+      return;
+    }
+
+    // User can use union type like typescript like string | number
+
+    const configTypeList: string[] = (configType as string)
+      .replace(/\s+/g, "")
+      .split("|");
 
     if (!configTypeList.includes(valueType)) {
       const textPosition = getTextPosition(document, k);
-      console.log("wrong", k, v);
       diagnostics.push({
         code: "",
         range: new vscode.Range(
@@ -245,45 +257,8 @@ const nonStrictValidate = (
         message: `The field ${k}'s type should be ${configType}`,
       });
     }
-
-    collection.set(document.uri, diagnostics);
   });
-
-  // Object.entries(meta).map(([k, v]) => {
-  //   console.log(k, v);
-
-  //   if (!(k in types)) {
-  //   }
-
-  //   if (typeof v === "object") {
-  //     if (k in types) {
-  //       if (types[k] !== "object") {
-  //         console.log(types[k], "not found");
-  //         collection.set(document.uri, [
-  //           {
-  //             code: "",
-  //             range: new vscode.Range(
-  //               new vscode.Position(3, 4),
-  //               new vscode.Position(3, 10)
-  //             ),
-  //             severity: vscode.DiagnosticSeverity.Error,
-  //             source: "",
-  //             message: `The field - [${k}]'s type should be ${types[k]}`,
-  //           },
-  //         ]);
-  //       } else {
-  //         nonStrictValidate(document, types[k] as MdGuardType, v, collection);
-  //       }
-  //     } else {
-  //       mdguardChannel.appendLine(
-  //         `Type ${k} is not present and strict mode is false. MdGuard won't validate meta ${k}`
-  //       );
-  //     }
-  //   }
-  // });
 };
-
-vscode.Position;
 
 const getTextPosition = (document: vscode.TextDocument, text: string) => {
   for (let i = 0; i < document.lineCount; i++) {
@@ -304,4 +279,11 @@ const getTextPosition = (document: vscode.TextDocument, text: string) => {
     end: 0,
     line: 0,
   };
+};
+
+const getFileExtension = (document: vscode.TextDocument): string => {
+  const pathArr = document.uri.path.split("/");
+  const fileNameArr = pathArr[pathArr.length - 1].split(".");
+  const fileExtension = fileNameArr[fileNameArr.length - 1];
+  return fileExtension;
 };
