@@ -70,6 +70,33 @@ export async function activate(context: vscode.ExtensionContext) {
     console.log(err);
   }
 
+  let configWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(folder, `**/${CONFIG_FILE_GLOB}`),
+    true,
+    false,
+    true
+  );
+
+  configWatcher.onDidChange(async (uri) => {
+    try {
+      if (configFileExtension === "mjs") {
+        // We need to invalidate old cached config
+        const module = await import(`${uri.path}?update=${new Date()}`);
+        config = module.default;
+      } else {
+        // We need to invalidate old cached config
+        delete require.cache[uri.path];
+        const module = require(uri.path);
+        config = module.default;
+      }
+      console.log("Config file re-loaded,", config);
+    } catch (err) {
+      console.log(err);
+    }
+  });
+
+  context.subscriptions.push(configWatcher);
+
   if (!config || Object.keys(config).length === 0) {
     mdguardChannel.appendLine(
       "Local configuration detected but had not correctly loaded."
