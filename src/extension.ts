@@ -265,11 +265,30 @@ const nonStrictValidate = (
       return;
     }
 
-    // User can use union type like typescript like string | number
-
     const configTypeList: string[] = (configType as string)
       .replace(/\s+/g, "")
       .split("|");
+
+    // Use can use multiple pre-set string like "test1" | "test2"
+
+    if (valueType === "string") {
+      if (!configTypeList.includes(v as string)) {
+        const textPosition = getTextPosition(document, k);
+        diagnostics.push({
+          code: "",
+          range: new vscode.Range(
+            new vscode.Position(textPosition.line, textPosition.start),
+            new vscode.Position(textPosition.line, textPosition.end)
+          ),
+          severity: vscode.DiagnosticSeverity.Error,
+          source: "",
+          message: `The field ${k}'s type should be ${configType}`,
+        });
+        return;
+      }
+    }
+
+    // User can use union type like typescript like string | number
 
     if (!configTypeList.includes(valueType)) {
       const textPosition = getTextPosition(document, k);
