@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import matter from "gray-matter";
 import { MdGuardConfig, MdGuardType, Meta } from "./types";
+import { getFileExtension, getTextPosition } from "./utils";
 
 const CONFIG_FILE_GLOB = "{mdguard,mdguard.config}.{js,mjs}";
 const mdguardChannel = vscode.window.createOutputChannel("mdguard");
@@ -113,6 +114,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
   mdguardChannel.appendLine("Activate MD Guard with config");
 
+  context.subscriptions.push(mdguardChannel);
+
   // Use DiagnosticCollection to provide info
 
   if (vscode.window.activeTextEditor) {
@@ -147,46 +150,59 @@ const updateDiagnostics = (
   mdGuardConfig: MdGuardConfig
 ): void => {
   collection.clear();
+
+  if (!document) return;
+
   let diagnostics: vscode.Diagnostic[] = [];
-  if (document) {
-    const fileExtension = getFileExtension(document);
-    if (fileExtension === "md") {
-      const { data } = matter(document.getText());
+  const fileExtension = getFileExtension(document);
+
+  if (fileExtension === "md") {
+    const { data } = matter(document.getText());
+
+    if (!("type" in data)) {
       if (mdGuardConfig.strict) {
-        if (!("type" in data)) {
-          collection.set(document.uri, [
-            {
-              code: "",
-              range: new vscode.Range(
-                new vscode.Position(0, 0),
-                new vscode.Position(0, 1)
-              ),
-              severity: vscode.DiagnosticSeverity.Error,
-              source: "",
-              message:
-                "MdGuard mode is strict, but it can not find the type field in markdown's meta",
-            },
-          ]);
-        }
-      } else {
-        if (!("type" in data)) {
-          return;
-        }
-        nonStrictValidate(
-          document,
-          mdGuardConfig.types[data.type as string] as MdGuardType,
-          data,
-          diagnostics
-        );
-        collection.set(document.uri, diagnostics);
+        collection.set(document.uri, [
+          {
+            code: "",
+            range: new vscode.Range(
+              new vscode.Position(0, 0),
+              new vscode.Position(0, 1)
+            ),
+            severity: vscode.DiagnosticSeverity.Error,
+            source: "",
+            message:
+              "MdGuard mode is strict, but it can not find the type field in markdown's meta",
+          },
+        ]);
       }
+      return;
     }
-  } else {
-    collection.clear();
+
+    if (mdGuardConfig.strict) {
+      strictValidate(
+        document,
+        mdGuardConfig.types[data.type as string] as MdGuardType,
+        data,
+        diagnostics
+      );
+    } else {
+      nonStrictValidate(
+        document,
+        mdGuardConfig.types[data.type as string] as MdGuardType,
+        data,
+        diagnostics
+      );
+    }
+    collection.set(document.uri, diagnostics);
   }
 };
 
-const strictValidate = (type: MdGuardType, meta: Meta) => {};
+const strictValidate = (
+  document: vscode.TextDocument,
+  type: MdGuardType,
+  meta: Meta,
+  diagnostics: vscode.Diagnostic[]
+) => {};
 
 /**
  * Will validate markdown meta/frontmatter in a non-strict manner
@@ -195,16 +211,16 @@ const strictValidate = (type: MdGuardType, meta: Meta) => {};
  * For example, a type like below
  * ```js
  * const type = {
- *  title: "string",
- *  description: "string"
+ *    title: "string",
+ *    description: "string"
  * }
  * ```
  * And the meta like below
  * ```js
  * const meta = {
- *  title: "I am meta",
- *  description: "hello! how are you"
- *  draft: false
+ *    title: "I am meta",
+ *    description: "hello! how are you"
+ *    draft: false
  * }
  * ```
  *
@@ -269,7 +285,7 @@ const nonStrictValidate = (
       .replace(/\s+/g, "")
       .split("|");
 
-    // Use can use multiple pre-set string like "test1" | "test2"
+    // User can use multiple pre-set string like "test1" | "test2"
 
     if (valueType === "string") {
       if (!configTypeList.includes(v as string)) {
@@ -288,7 +304,7 @@ const nonStrictValidate = (
       }
     }
 
-    // User can use union type like typescript like string | number
+    // User can use union type like string | number
 
     if (!configTypeList.includes(valueType)) {
       const textPosition = getTextPosition(document, k);
@@ -304,32 +320,4 @@ const nonStrictValidate = (
       });
     }
   });
-};
-
-const getTextPosition = (document: vscode.TextDocument, text: string) => {
-  for (let i = 0; i < document.lineCount; i++) {
-    const line = document.lineAt(i);
-    if (line.text.includes(text)) {
-      const start = line.text.indexOf(text);
-      const end = line.text.indexOf(text) + text.length;
-
-      return {
-        start,
-        end,
-        line: i,
-      };
-    }
-  }
-  return {
-    start: 0,
-    end: 0,
-    line: 0,
-  };
-};
-
-const getFileExtension = (document: vscode.TextDocument): string => {
-  const pathArr = document.uri.path.split("/");
-  const fileNameArr = pathArr[pathArr.length - 1].split(".");
-  const fileExtension = fileNameArr[fileNameArr.length - 1];
-  return fileExtension;
 };
