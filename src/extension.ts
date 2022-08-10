@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import matter from "gray-matter";
 import { MdGuardConfig, MdGuardType, Meta } from "./types";
-import { getFileExtension, getTextPosition } from "./utils";
+import { getFileExtension, getKeyPosition } from "./utils";
 
 const CONFIG_FILE_GLOB = "{mdguard,mdguard.config}.{js,mjs}";
 const mdguardChannel = vscode.window.createOutputChannel("mdguard");
@@ -72,7 +72,6 @@ export async function activate(context: vscode.ExtensionContext) {
         const module = require(uri.path);
         config = module.default;
       }
-      console.log("Config file re-loaded,", config);
     } catch (err) {
       console.log(err);
     }
@@ -165,6 +164,7 @@ const updateDiagnostics = (
       strictValidate(
         document,
         mdGuardConfig.types[data.type as string] as MdGuardType,
+        data.type,
         data,
         diagnostics
       );
@@ -175,8 +175,6 @@ const updateDiagnostics = (
         data,
         diagnostics
       );
-      console.log("???");
-      console.log("heeloo");
     }
 
     collection.set(document.uri, diagnostics);
@@ -186,6 +184,7 @@ const updateDiagnostics = (
 const strictValidate = (
   document: vscode.TextDocument,
   type: MdGuardType,
+  typeName: string,
   meta: Meta,
   diagnostics: vscode.Diagnostic[]
 ) => {
@@ -193,8 +192,12 @@ const strictValidate = (
     // If the frontmatter has additional field besides type's field, we need to warn user
     // this field is unnecessary under strict mode.
 
+    if (k === "type") {
+      return;
+    }
+
     if (!(k in type)) {
-      const textPosition = getTextPosition(document, k);
+      const textPosition = getKeyPosition(document, k);
       diagnostics.push({
         code: "",
         range: new vscode.Range(
@@ -203,7 +206,7 @@ const strictValidate = (
         ),
         severity: vscode.DiagnosticSeverity.Error,
         source: "mdguard",
-        message: `The field ${k} is not existed in configuration`,
+        message: `${k} is not existed in type ${typeName}`,
       });
       return;
     }
@@ -250,8 +253,6 @@ const nonStrictValidate = (
   Object.entries(meta).forEach(([k, v]) => {
     // If the frontmatter has additional field besides type's field, we don't validate
     // it under non-strict mode
-
-    console.log("value", v);
 
     if (!(k in type)) {
       return;
@@ -304,7 +305,7 @@ const validate = ({
       valueType === "object" &&
       value !== null
     ) {
-      const textPosition = getTextPosition(document, key);
+      const textPosition = getKeyPosition(document, key);
       diagnostics.push({
         code: "",
         range: new vscode.Range(
@@ -323,7 +324,7 @@ const validate = ({
       valueType !== "object" &&
       value !== null
     ) {
-      const textPosition = getTextPosition(document, key);
+      const textPosition = getKeyPosition(document, key);
       diagnostics.push({
         code: "",
         range: new vscode.Range(
@@ -342,8 +343,6 @@ const validate = ({
       .split("|");
 
     let primitivePass = false;
-
-    console.log(valueType, targetTypeList);
 
     // User can use union type like string | number
 
@@ -391,7 +390,7 @@ const validate = ({
     }
 
     if (!primitivePass) {
-      const textPosition = getTextPosition(document, key);
+      const textPosition = getKeyPosition(document, key);
       diagnostics.push({
         code: "",
         range: new vscode.Range(
