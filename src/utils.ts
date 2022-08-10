@@ -1,11 +1,11 @@
 import * as vscode from "vscode";
 
-const getTextPosition = (document: vscode.TextDocument, text: string) => {
+const getKeyPosition = (document: vscode.TextDocument, key: string) => {
   for (let i = 0; i < document.lineCount; i++) {
     const line = document.lineAt(i);
-    if (line.text.includes(text)) {
-      const start = line.text.indexOf(text);
-      const end = line.text.indexOf(text) + text.length;
+    if (line.text.includes(key)) {
+      const start = line.text.indexOf(key);
+      const end = line.text.indexOf(key) + key.length;
 
       // We need to find the right key
 
@@ -23,7 +23,7 @@ const getTextPosition = (document: vscode.TextDocument, text: string) => {
         //   }
         // }
         const textList = line.text.split(" ").filter((e) => e !== "");
-        if (textList[0] === text + ":") {
+        if (textList[0] === key + ":") {
           return {
             start,
             end,
@@ -68,4 +68,4 @@ const sortedWorkspaceFolders = (): string[] => {
   return _sortedWorkspaceFolders;
 };
 
-export { getTextPosition, getFileExtension, sortedWorkspaceFolders };
+export { getKeyPosition, getFileExtension, sortedWorkspaceFolders };

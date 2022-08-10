@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import matter from "gray-matter";
 import { MdGuardConfig, MdGuardType, Meta } from "./types";
-import { getFileExtension, getTextPosition } from "./utils";
+import { getFileExtension, getKeyPosition } from "./utils";
 
 const CONFIG_FILE_GLOB = "{mdguard,mdguard.config}.{js,mjs}";
 const mdguardChannel = vscode.window.createOutputChannel("mdguard");
@@ -197,7 +197,7 @@ const strictValidate = (
     }
 
     if (!(k in type)) {
-      const textPosition = getTextPosition(document, k);
+      const textPosition = getKeyPosition(document, k);
       diagnostics.push({
         code: "",
         range: new vscode.Range(
@@ -305,7 +305,7 @@ const validate = ({
       valueType === "object" &&
       value !== null
     ) {
-      const textPosition = getTextPosition(document, key);
+      const textPosition = getKeyPosition(document, key);
       diagnostics.push({
         code: "",
         range: new vscode.Range(
@@ -324,7 +324,7 @@ const validate = ({
       valueType !== "object" &&
       value !== null
     ) {
-      const textPosition = getTextPosition(document, key);
+      const textPosition = getKeyPosition(document, key);
       diagnostics.push({
         code: "",
         range: new vscode.Range(
@@ -390,7 +390,7 @@ const validate = ({
     }
 
     if (!primitivePass) {
-      const textPosition = getTextPosition(document, key);
+      const textPosition = getKeyPosition(document, key);
       diagnostics.push({
         code: "",
         range: new vscode.Range(
