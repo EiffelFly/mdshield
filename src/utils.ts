@@ -28,4 +28,25 @@ const getFileExtension = (document: vscode.TextDocument): string => {
   return fileExtension;
 };
 
-export { getTextPosition, getFileExtension };
+const sortedWorkspaceFolders = (): string[] => {
+  let _sortedWorkspaceFolders: string[] | undefined;
+
+  if (_sortedWorkspaceFolders === void 0) {
+    _sortedWorkspaceFolders = vscode.workspace.workspaceFolders
+      ? vscode.workspace.workspaceFolders
+          .map((folder) => {
+            let result = folder.uri.toString();
+            if (result.charAt(result.length - 1) !== "/") {
+              result = result + "/";
+            }
+            return result;
+          })
+          .sort((a, b) => {
+            return a.length - b.length;
+          })
+      : [];
+  }
+  return _sortedWorkspaceFolders;
+};
+
+export { getTextPosition, getFileExtension, sortedWorkspaceFolders };

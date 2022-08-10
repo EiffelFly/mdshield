@@ -6,26 +6,6 @@ import { getFileExtension, getTextPosition } from "./utils";
 const CONFIG_FILE_GLOB = "{mdguard,mdguard.config}.{js,mjs}";
 const mdguardChannel = vscode.window.createOutputChannel("mdguard");
 
-let _sortedWorkspaceFolders: string[] | undefined;
-const sortedWorkspaceFolders = (): string[] => {
-  if (_sortedWorkspaceFolders === void 0) {
-    _sortedWorkspaceFolders = vscode.workspace.workspaceFolders
-      ? vscode.workspace.workspaceFolders
-          .map((folder) => {
-            let result = folder.uri.toString();
-            if (result.charAt(result.length - 1) !== "/") {
-              result = result + "/";
-            }
-            return result;
-          })
-          .sort((a, b) => {
-            return a.length - b.length;
-          })
-      : [];
-  }
-  return _sortedWorkspaceFolders;
-};
-
 // Get config
 /**
  * {
@@ -35,6 +15,8 @@ const sortedWorkspaceFolders = (): string[] => {
  *    strict: boolean
  * }
  */
+
+// Be careful of null and undefined
 
 export async function activate(context: vscode.ExtensionContext) {
   const collection = vscode.languages.createDiagnosticCollection("mdguard");
@@ -169,9 +151,10 @@ const updateDiagnostics = (
               new vscode.Position(0, 1)
             ),
             severity: vscode.DiagnosticSeverity.Error,
-            source: "",
+            source: "mdguard",
             message:
-              "MdGuard mode is strict, but it can not find the type field in markdown's meta",
+              "MdGuard is under strict mode, but it can not find the type field in markdown's meta. " +
+              "You can either set MdGuard at non-strict mode, or add type into your frontmatter",
           },
         ]);
       }
@@ -192,7 +175,10 @@ const updateDiagnostics = (
         data,
         diagnostics
       );
+      console.log("???");
+      console.log("heeloo");
     }
+
     collection.set(document.uri, diagnostics);
   }
 };
@@ -202,7 +188,35 @@ const strictValidate = (
   type: MdGuardType,
   meta: Meta,
   diagnostics: vscode.Diagnostic[]
-) => {};
+) => {
+  Object.entries(meta).forEach(([k, v]) => {
+    // If the frontmatter has additional field besides type's field, we need to warn user
+    // this field is unnecessary under strict mode.
+
+    if (!(k in type)) {
+      const textPosition = getTextPosition(document, k);
+      diagnostics.push({
+        code: "",
+        range: new vscode.Range(
+          new vscode.Position(textPosition.line, textPosition.start),
+          new vscode.Position(textPosition.line, textPosition.end)
+        ),
+        severity: vscode.DiagnosticSeverity.Error,
+        source: "mdguard",
+        message: `The field ${k} is not existed in configuration`,
+      });
+      return;
+    }
+
+    validate({
+      document,
+      type,
+      diagnostics,
+      key: k,
+      value: v,
+    });
+  });
+};
 
 /**
  * Will validate markdown meta/frontmatter in a non-strict manner
@@ -231,28 +245,66 @@ const nonStrictValidate = (
   document: vscode.TextDocument,
   type: MdGuardType,
   meta: Meta,
-  diagnostics: vscode.Diagnostic[]
+  diagnostics: vscode.Diagnostic[] = []
 ) => {
   Object.entries(meta).forEach(([k, v]) => {
+    // If the frontmatter has additional field besides type's field, we don't validate
+    // it under non-strict mode
+
+    console.log("value", v);
+
     if (!(k in type)) {
       return;
     }
 
-    const configType = type[k];
-    const valueType = typeof v;
+    validate({
+      document,
+      type,
+      diagnostics,
+      key: k,
+      value: v,
+    });
+  });
+};
 
-    if (typeof configType === "object" && valueType === "object") {
+type ValidateProps = {
+  document: vscode.TextDocument;
+  type: MdGuardType;
+  key: string;
+  value: Meta | string | number | boolean | null;
+  diagnostics: vscode.Diagnostic[];
+};
+
+const validate = ({
+  document,
+  type,
+  key,
+  value,
+  diagnostics,
+}: ValidateProps) => {
+  try {
+    const targetType = type[key];
+    const valueType = typeof value;
+    if (
+      typeof targetType === "object" &&
+      valueType === "object" &&
+      value !== null
+    ) {
       nonStrictValidate(
         document,
-        configType as MdGuardType,
-        v as Meta,
+        targetType as MdGuardType,
+        value as Meta,
         diagnostics
       );
       return;
     }
 
-    if (typeof configType !== "object" && valueType === "object") {
-      const textPosition = getTextPosition(document, k);
+    if (
+      typeof targetType !== "object" &&
+      valueType === "object" &&
+      value !== null
+    ) {
+      const textPosition = getTextPosition(document, key);
       diagnostics.push({
         code: "",
         range: new vscode.Range(
@@ -260,14 +312,18 @@ const nonStrictValidate = (
           new vscode.Position(textPosition.line, textPosition.end)
         ),
         severity: vscode.DiagnosticSeverity.Error,
-        source: "",
-        message: `The field ${k}'s type should be ${configType}`,
+        source: "mdguard",
+        message: `The field ${key}'s type should be ${targetType}`,
       });
       return;
     }
 
-    if (typeof configType === "object" && valueType !== "object") {
-      const textPosition = getTextPosition(document, k);
+    if (
+      typeof targetType === "object" &&
+      valueType !== "object" &&
+      value !== null
+    ) {
+      const textPosition = getTextPosition(document, key);
       diagnostics.push({
         code: "",
         range: new vscode.Range(
@@ -275,39 +331,67 @@ const nonStrictValidate = (
           new vscode.Position(textPosition.line, textPosition.end)
         ),
         severity: vscode.DiagnosticSeverity.Error,
-        source: "",
-        message: `The field ${k}'s type should be ${configType}`,
+        source: "mdguard",
+        message: `The field ${key}'s type should be ${targetType}`,
       });
       return;
     }
 
-    const configTypeList: string[] = (configType as string)
+    const targetTypeList: string[] = (targetType as string)
       .replace(/\s+/g, "")
       .split("|");
+
+    let primitivePass = false;
+
+    console.log(valueType, targetTypeList);
+
+    // User can use union type like string | number
+
+    if (targetTypeList.includes(valueType)) {
+      primitivePass = true;
+    }
 
     // User can use multiple pre-set string like "test1" | "test2"
 
     if (valueType === "string") {
-      if (!configTypeList.includes(v as string)) {
-        const textPosition = getTextPosition(document, k);
-        diagnostics.push({
-          code: "",
-          range: new vscode.Range(
-            new vscode.Position(textPosition.line, textPosition.start),
-            new vscode.Position(textPosition.line, textPosition.end)
-          ),
-          severity: vscode.DiagnosticSeverity.Error,
-          source: "",
-          message: `The field ${k}'s type should be ${configType}`,
-        });
-        return;
+      if (targetTypeList.includes(value as string)) {
+        primitivePass = true;
       }
     }
 
-    // User can use union type like string | number
+    // User can use multiple pre-set string like "test1" | 123
 
-    if (!configTypeList.includes(valueType)) {
-      const textPosition = getTextPosition(document, k);
+    if (valueType === "number") {
+      const targetTypeNumList = targetTypeList.map(Number);
+      if (targetTypeNumList.includes(value as number)) {
+        primitivePass = true;
+      }
+    }
+
+    // User can use multiple pre-set string like "test1" | false
+
+    if (valueType === "boolean") {
+      if (value) {
+        if (targetTypeList.includes("true")) {
+          primitivePass = true;
+        }
+      } else {
+        if (targetTypeList.includes("false")) {
+          primitivePass = true;
+        }
+      }
+    }
+
+    // User can use multiple pre-set string like "test1" | null
+
+    if (value === null) {
+      if (targetTypeList.includes("null")) {
+        primitivePass = true;
+      }
+    }
+
+    if (!primitivePass) {
+      const textPosition = getTextPosition(document, key);
       diagnostics.push({
         code: "",
         range: new vscode.Range(
@@ -315,9 +399,11 @@ const nonStrictValidate = (
           new vscode.Position(textPosition.line, textPosition.end)
         ),
         severity: vscode.DiagnosticSeverity.Error,
-        source: "",
-        message: `The field ${k}'s type should be ${configType}`,
+        source: "mdguard",
+        message: `The field ${key}'s type should be ${targetType}`,
       });
     }
-  });
+  } catch (err) {
+    console.log(err);
+  }
 };
