@@ -7,11 +7,30 @@ const getTextPosition = (document: vscode.TextDocument, text: string) => {
       const start = line.text.indexOf(text);
       const end = line.text.indexOf(text) + text.length;
 
-      return {
-        start,
-        end,
-        line: i,
-      };
+      // We need to find the right key
+
+      if (start === 0) {
+        return {
+          start,
+          end,
+          line: i,
+        };
+      } else {
+        // We have to make sure the child's key is at the first position of the line too
+        // {
+        //   parent: {
+        //     child: "hi" <--- If this is the right key, it won't have any character before itself
+        //   }
+        // }
+        const textList = line.text.split(" ").filter((e) => e !== "");
+        if (textList[0] === text + ":") {
+          return {
+            start,
+            end,
+            line: i,
+          };
+        }
+      }
     }
   }
   return {
