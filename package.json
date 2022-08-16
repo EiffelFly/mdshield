@@ -14,7 +14,7 @@
     "onLanguage:markdown",
     "workspaceContains:mdguard.config.*"
   ],
-  "main": "./out/extension.js",
+  "main": "./out/main.js",
   "contributes": {
     "commands": [
       {
@@ -24,29 +24,36 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "pnpm run compile",
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "esbuild-base": "node ./esbuild.mjs",
+    "esbuild": "pnpm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "pnpm run esbuild-base -- --sourcemap --watch",
+    "test-compile": "tsc -p ./"
   },
   "devDependencies": {
+    "@mdx-js/esbuild": "^2.1.2",
     "@types/glob": "^7.2.0",
     "@types/js-yaml": "^4.0.5",
+    "@types/mdx": "^2.0.2",
     "@types/mocha": "^9.1.1",
     "@types/node": "16.x",
     "@types/vscode": "^1.69.0",
     "@typescript-eslint/eslint-plugin": "^5.31.0",
     "@typescript-eslint/parser": "^5.31.0",
     "@vscode/test-electron": "^2.1.5",
+    "esbuild": "^0.15.3",
     "eslint": "^8.20.0",
-    "glob": "^8.0.3",
     "mocha": "^10.0.0",
     "typescript": "^4.7.4"
   },
   "dependencies": {
-    "gray-matter": "^4.0.3",
-    "js-yaml": "^4.1.0"
+    "@mdx-js/mdx": "^2.1.2",
+    "glob": "^8.0.3",
+    "gray-matter": "^4.0.3"
   }
 }
