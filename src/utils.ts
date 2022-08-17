@@ -1,53 +1,78 @@
+import { YAMLException } from "js-yaml";
 import * as vscode from "vscode";
 
-const getKeyPosition = (document: vscode.TextDocument, key: string) => {
-  for (let i = 0; i < document.lineCount; i++) {
-    const line = document.lineAt(i);
-    if (line.text.includes(key)) {
-      const start = line.text.indexOf(key);
-      const end = line.text.indexOf(key) + key.length;
+/**
+ * Use startLine to determine whether the match text is the right one.
+ * But the caveat is this only working at searching simple or object structure.
+ *
+ * In the situation below, we will recursively validate the object, everytime the position
+ * go deeper one level, it needs to send the updated startPosition (In this case, the initial
+ * startPosition will be {position: 0, offset: 0}, updated startPosition will be {position: 2, offset: 0})
+ *
+ * ```
+ * ---
+ * id: "getKey",
+ * test: {
+ *   id: "another key"
+ * }
+ * ---
+ * ```
+ */
 
-      // We need to find the right key
-
-      if (start === 0) {
-        return {
-          start,
-          end,
-          line: i,
-        };
-      } else {
-        // We have to make sure the child's key is at the first position of the line too
-        // {
-        //   parent: {
-        //     child: "hi" <--- If this is the right key, it won't have any character before itself
-        //   }
-        // }
-        const textList = line.text.split(" ").filter((e) => e !== "");
-        if (textList[0] === key + ":") {
-          return {
-            start,
-            end,
-            line: i,
-          };
-        }
-      }
-    }
-  }
-  return {
-    start: 0,
-    end: 0,
-    line: 0,
+export type getKeyPositionProps = {
+  document: vscode.TextDocument;
+  key: string;
+  startPosition: {
+    line: number;
+    offset: number;
   };
 };
 
-const getFileExtension = (document: vscode.TextDocument): string => {
+export const getKeyPosition = ({
+  document,
+  key,
+  startPosition,
+}: getKeyPositionProps) => {
+  let pattern = new RegExp(`${key}:`, "g");
+  let match;
+  let target;
+
+  while ((match = pattern.exec(document.getText())) !== null) {
+    const start = document.positionAt(match.index);
+
+    if (start.line > startPosition.line) {
+      target = match;
+      break;
+    } else if (start.line === startPosition.line) {
+      // situation about key and value are in the same line { key: { foo: "h1", bar: "yo" }}
+      if (start.character > startPosition.offset) {
+        target = match;
+        break;
+      }
+    }
+  }
+
+  if (target) {
+    return {
+      start: document.positionAt(target.index),
+      end: document.positionAt(target.index + target[0].length),
+    };
+  } else {
+    return {
+      start: new vscode.Position(0, 0),
+      end: new vscode.Position(0, 1),
+    };
+  }
+};
+
+export const getFileExtension = (document: vscode.TextDocument): string => {
   const pathArr = document.uri.path.split("/");
   const fileNameArr = pathArr[pathArr.length - 1].split(".");
   const fileExtension = fileNameArr[fileNameArr.length - 1];
   return fileExtension;
 };
 
-const sortedWorkspaceFolders = (): string[] => {
+export const sortedWorkspaceFolders = (): string[] => {
   let _sortedWorkspaceFolders: string[] | undefined;
 
   if (_sortedWorkspaceFolders === void 0) {
@@ -68,4 +93,12 @@ const sortedWorkspaceFolders = (): string[] => {
   return _sortedWorkspaceFolders;
 };
 
-export { getKeyPosition, getFileExtension, sortedWorkspaceFolders };
+export const isYmalException = (e: unknown): e is YAMLException => {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "reason" in e &&
+    "message" in e &&
+    "name" in e
+  );
+};

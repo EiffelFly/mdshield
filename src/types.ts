@@ -1,6 +1,7 @@
 export type MdGuardConfig = {
   strict: boolean;
   types: MdGuardType;
+  meta: "frontmatter" | "export";
 };
 
 export type MdGuardType = {

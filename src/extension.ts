@@ -1,7 +1,13 @@
 import * as vscode from "vscode";
 import matter from "gray-matter";
 import { MdGuardConfig, MdGuardType, Meta } from "./types";
-import { getFileExtension, getKeyPosition } from "./utils";
+import {
+  getFileExtension,
+  getKeyPosition,
+  getKeyPositionProps,
+  isYmalException,
+} from "./utils";
+import { YAMLException } from "js-yaml";
 
 const CONFIG_FILE_GLOB = "{mdguard,mdguard.config}.{js,mjs}";
 const mdguardChannel = vscode.window.createOutputChannel("mdguard");
@@ -125,11 +131,11 @@ export async function activate(context: vscode.ExtensionContext) {
 // this method is called when your extension is deactivated
 export function deactivate() {}
 
-const updateDiagnostics = (
+const updateDiagnostics = async (
   document: vscode.TextDocument,
   collection: vscode.DiagnosticCollection,
   mdGuardConfig: MdGuardConfig
-): void => {
+): Promise<void> => {
   collection.clear();
 
   if (!document) return;
@@ -138,46 +144,150 @@ const updateDiagnostics = (
   const fileExtension = getFileExtension(document);
 
   if (fileExtension === "md") {
-    const { data } = matter(document.getText());
+    let data: { [key: string]: any } = {};
 
-    if (!("type" in data)) {
-      if (mdGuardConfig.strict) {
-        collection.set(document.uri, [
-          {
-            code: "",
-            range: new vscode.Range(
-              new vscode.Position(0, 0),
-              new vscode.Position(0, 1)
-            ),
-            severity: vscode.DiagnosticSeverity.Error,
-            source: "mdguard",
-            message:
-              "MdGuard is under strict mode, but it can not find the type field in markdown's meta. " +
-              "You can either set MdGuard at non-strict mode, or add type into your frontmatter",
-          },
-        ]);
+    try {
+      const meta = matter(document.getText());
+      data = meta.data;
+    } catch (err) {
+      if (isYmalException(err)) {
+        if (err.reason === "duplicated mapping key") {
+          collection.set(document.uri, [
+            {
+              code: "",
+              range: new vscode.Range(
+                new vscode.Position(0, 0),
+                new vscode.Position(0, 1)
+              ),
+              severity: vscode.DiagnosticSeverity.Error,
+              source: "mdguard",
+              message: err.message,
+            },
+          ]);
+        }
       }
-      return;
     }
 
-    if (mdGuardConfig.strict) {
-      strictValidate(
-        document,
-        mdGuardConfig.types[data.type as string] as MdGuardType,
-        data.type,
-        data,
-        diagnostics
-      );
+    if (Object.keys(data).length !== 0) {
+      if (!("type" in data)) {
+        if (mdGuardConfig.strict) {
+          collection.set(document.uri, [
+            {
+              code: "",
+              range: new vscode.Range(
+                new vscode.Position(0, 0),
+                new vscode.Position(0, 1)
+              ),
+              severity: vscode.DiagnosticSeverity.Error,
+              source: "mdguard",
+              message:
+                "MdGuard is under strict mode, but it can not find the type field in markdown's meta. " +
+                "You can either set MdGuard at non-strict mode, or add type into your frontmatter",
+            },
+          ]);
+        }
+        return;
+      }
+
+      if (mdGuardConfig.strict) {
+        strictValidate(
+          document,
+          mdGuardConfig.types[data.type as string] as MdGuardType,
+          data.type,
+          data,
+          diagnostics,
+          { line: 0, offset: 0 }
+        );
+      } else {
+        nonStrictValidate(
+          document,
+          mdGuardConfig.types[data.type as string] as MdGuardType,
+          data,
+          diagnostics,
+          { line: 0, offset: 0 }
+        );
+      }
+      collection.set(document.uri, diagnostics);
+    }
+
+    return;
+  }
+
+  if (fileExtension === "mdx") {
+    if (mdGuardConfig.meta === "frontmatter") {
+      let data: { [key: string]: any } = {};
+
+      try {
+        const meta = matter(document.getText());
+        data = meta.data;
+      } catch (err) {
+        if (isYmalException(err)) {
+          if (err.reason === "duplicated mapping key") {
+            collection.set(document.uri, [
+              {
+                code: "",
+                range: new vscode.Range(
+                  new vscode.Position(0, 0),
+                  new vscode.Position(0, 1)
+                ),
+                severity: vscode.DiagnosticSeverity.Error,
+                source: "mdguard",
+                message: err.message,
+              },
+            ]);
+          }
+        }
+      }
+
+      if (Object.keys(data).length !== 0) {
+        if (!("type" in data)) {
+          if (mdGuardConfig.strict) {
+            collection.set(document.uri, [
+              {
+                code: "",
+                range: new vscode.Range(
+                  new vscode.Position(0, 0),
+                  new vscode.Position(0, 1)
+                ),
+                severity: vscode.DiagnosticSeverity.Error,
+                source: "mdguard",
+                message:
+                  "MdGuard is under strict mode, but it can not find the type field in markdown's meta. " +
+                  "You can either set MdGuard at non-strict mode, or add type into your frontmatter",
+              },
+            ]);
+          }
+          return;
+        }
+
+        if (mdGuardConfig.strict) {
+          strictValidate(
+            document,
+            mdGuardConfig.types[data.type as string] as MdGuardType,
+            data.type,
+            data,
+            diagnostics,
+            { line: 0, offset: 0 }
+          );
+        } else {
+          nonStrictValidate(
+            document,
+            mdGuardConfig.types[data.type as string] as MdGuardType,
+            data,
+            diagnostics,
+            { line: 0, offset: 0 }
+          );
+        }
+        collection.set(document.uri, diagnostics);
+      }
+    } else if (mdGuardConfig.meta === "export") {
+      // const module = await import(`${document.uri.path}?update=${new Date()}`);
+      // console.log(module.meta);
+      // const source = fs.readFileSync(document.uri.path);
+      // const compiled = await (await mdx).compile(source);
+      // console.log(compiled);
     } else {
-      nonStrictValidate(
-        document,
-        mdGuardConfig.types[data.type as string] as MdGuardType,
-        data,
-        diagnostics
-      );
     }
-
-    collection.set(document.uri, diagnostics);
   }
 };
 
@@ -186,7 +296,8 @@ const strictValidate = (
   type: MdGuardType,
   typeName: string,
   meta: Meta,
-  diagnostics: vscode.Diagnostic[]
+  diagnostics: vscode.Diagnostic[],
+  startPosition: getKeyPositionProps["startPosition"]
 ) => {
   Object.entries(meta).forEach(([k, v]) => {
     // If the frontmatter has additional field besides type's field, we need to warn user
@@ -197,17 +308,36 @@ const strictValidate = (
     }
 
     if (!(k in type)) {
-      const textPosition = getKeyPosition(document, k);
+      const textPosition = getKeyPosition({
+        document,
+        key: k,
+        startPosition,
+      });
       diagnostics.push({
         code: "",
-        range: new vscode.Range(
-          new vscode.Position(textPosition.line, textPosition.start),
-          new vscode.Position(textPosition.line, textPosition.end)
-        ),
+        range: new vscode.Range(textPosition.start, textPosition.end),
         severity: vscode.DiagnosticSeverity.Error,
         source: "mdguard",
         message: `${k} is not existed in type ${typeName}`,
       });
+      return;
+    }
+
+    if (typeof type[k] === "object" && typeof v === "object" && v !== null) {
+      const pos = getKeyPosition({
+        document,
+        key: k,
+        startPosition,
+      });
+
+      strictValidate(
+        document,
+        type[k] as MdGuardType,
+        typeName,
+        v as Meta,
+        diagnostics,
+        { line: pos.start.line, offset: pos.start.character }
+      );
       return;
     }
 
@@ -217,6 +347,7 @@ const strictValidate = (
       diagnostics,
       key: k,
       value: v,
+      startPosition,
     });
   });
 };
@@ -248,7 +379,8 @@ const nonStrictValidate = (
   document: vscode.TextDocument,
   type: MdGuardType,
   meta: Meta,
-  diagnostics: vscode.Diagnostic[] = []
+  diagnostics: vscode.Diagnostic[] = [],
+  startPosition: getKeyPositionProps["startPosition"]
 ) => {
   Object.entries(meta).forEach(([k, v]) => {
     // If the frontmatter has additional field besides type's field, we don't validate
@@ -258,12 +390,29 @@ const nonStrictValidate = (
       return;
     }
 
+    if (typeof type[k] === "object" && typeof v === "object" && v !== null) {
+      const pos = getKeyPosition({
+        document,
+        key: k,
+        startPosition,
+      });
+      nonStrictValidate(
+        document,
+        type[k] as MdGuardType,
+        v as Meta,
+        diagnostics,
+        { line: pos.start.line, offset: pos.start.character }
+      );
+      return;
+    }
+
     validate({
       document,
       type,
       diagnostics,
       key: k,
       value: v,
+      startPosition,
     });
   });
 };
@@ -274,6 +423,7 @@ type ValidateProps = {
   key: string;
   value: Meta | string | number | boolean | null;
   diagnostics: vscode.Diagnostic[];
+  startPosition: getKeyPositionProps["startPosition"];
 };
 
 const validate = ({
@@ -282,36 +432,25 @@ const validate = ({
   key,
   value,
   diagnostics,
+  startPosition,
 }: ValidateProps) => {
   try {
     const targetType = type[key];
     const valueType = typeof value;
-    if (
-      typeof targetType === "object" &&
-      valueType === "object" &&
-      value !== null
-    ) {
-      nonStrictValidate(
-        document,
-        targetType as MdGuardType,
-        value as Meta,
-        diagnostics
-      );
-      return;
-    }
 
     if (
       typeof targetType !== "object" &&
       valueType === "object" &&
       value !== null
     ) {
-      const textPosition = getKeyPosition(document, key);
+      const textPosition = getKeyPosition({
+        document,
+        key,
+        startPosition,
+      });
       diagnostics.push({
         code: "",
-        range: new vscode.Range(
-          new vscode.Position(textPosition.line, textPosition.start),
-          new vscode.Position(textPosition.line, textPosition.end)
-        ),
+        range: new vscode.Range(textPosition.start, textPosition.end),
         severity: vscode.DiagnosticSeverity.Error,
         source: "mdguard",
         message: `The field ${key}'s type should be ${targetType}`,
@@ -324,13 +463,14 @@ const validate = ({
       valueType !== "object" &&
       value !== null
     ) {
-      const textPosition = getKeyPosition(document, key);
+      const textPosition = getKeyPosition({
+        document,
+        key,
+        startPosition,
+      });
       diagnostics.push({
         code: "",
-        range: new vscode.Range(
-          new vscode.Position(textPosition.line, textPosition.start),
-          new vscode.Position(textPosition.line, textPosition.end)
-        ),
+        range: new vscode.Range(textPosition.start, textPosition.end),
         severity: vscode.DiagnosticSeverity.Error,
         source: "mdguard",
         message: `The field ${key}'s type should be ${targetType}`,
@@ -390,13 +530,14 @@ const validate = ({
     }
 
     if (!primitivePass) {
-      const textPosition = getKeyPosition(document, key);
+      const textPosition = getKeyPosition({
+        document,
+        key,
+        startPosition,
+      });
       diagnostics.push({
         code: "",
-        range: new vscode.Range(
-          new vscode.Position(textPosition.line, textPosition.start),
-          new vscode.Position(textPosition.line, textPosition.end)
-        ),
+        range: new vscode.Range(textPosition.start, textPosition.end),
         severity: vscode.DiagnosticSeverity.Error,
         source: "mdguard",
         message: `The field ${key}'s type should be ${targetType}`,
