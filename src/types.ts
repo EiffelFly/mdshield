@@ -1,11 +1,11 @@
-export type MdGuardConfig = {
+export type MdShieldConfig = {
   strict: boolean;
-  types: MdGuardType;
+  types: MdShieldType;
   meta: "frontmatter" | "export";
 };
 
-export type MdGuardType = {
-  [k: string]: string | MdGuardType;
+export type MdShieldType = {
+  [k: string]: string | MdShieldType;
 };
 export type Meta = {
   [k: string]: Meta | string | number | boolean | null;

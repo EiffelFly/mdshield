@@ -12,7 +12,7 @@
   "activationEvents": [
     "onCommand:nitro-intelligence.helloWorld",
     "onLanguage:markdown",
-    "workspaceContains:mdguard.config.*"
+    "workspaceContains:mdshield.config.*"
   ],
   "main": "./out/main.js",
   "contributes": {
@@ -23,7 +23,7 @@
       }
     ]
   },
-  "repository": "https://github.com/EiffelFly/mdguard",
+  "repository": "https://github.com/EiffelFly/mdshield",
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
     "compile": "tsc -p ./",

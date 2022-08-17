@@ -1,23 +1,22 @@
 import * as vscode from "vscode";
 import matter from "gray-matter";
-import { MdGuardConfig, MdGuardType, Meta } from "./types";
+import { MdShieldConfig, MdShieldType, Meta } from "./types";
 import {
   getFileExtension,
   getKeyPosition,
   getKeyPositionProps,
   isYmalException,
 } from "./utils";
-import { YAMLException } from "js-yaml";
 
-const CONFIG_FILE_GLOB = "{mdguard,mdguard.config}.{js,mjs}";
-const mdguardChannel = vscode.window.createOutputChannel("mdguard");
+const CONFIG_FILE_GLOB = "{mdshield,mdshield.config}.{js,mjs}";
+const mdShieldChannel = vscode.window.createOutputChannel("mdshield");
 
 // Get config
 /**
  * {
  *     // make sure every markdown file need to have type key-value in frontmatter
  *     // the frontmatter need to be identical to the type, every field should exist.
- *     // In strict=false mode, mdguard will only validate the registered type.
+ *     // In strict=false mode, mdshield will only validate the registered type.
  *    strict: boolean
  * }
  */
@@ -25,7 +24,7 @@ const mdguardChannel = vscode.window.createOutputChannel("mdguard");
 // Be careful of null and undefined
 
 export async function activate(context: vscode.ExtensionContext) {
-  const collection = vscode.languages.createDiagnosticCollection("mdguard");
+  const collection = vscode.languages.createDiagnosticCollection("mdshield");
 
   if (!vscode.workspace.workspaceFolders) return;
 
@@ -38,14 +37,14 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   if (!configUri) {
-    mdguardChannel.appendLine("Local configuration not detected");
+    mdShieldChannel.appendLine("Local configuration not detected");
   }
 
   const configPathArr = configUri.path.split("/");
   const configFileNameArr = configPathArr[configPathArr.length - 1].split(".");
   const configFileExtension = configFileNameArr[configFileNameArr.length - 1];
 
-  let config = {} as MdGuardConfig;
+  let config = {} as MdShieldConfig;
 
   try {
     if (configFileExtension === "mjs") {
@@ -86,22 +85,22 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(configWatcher);
 
   if (!config || Object.keys(config).length === 0) {
-    mdguardChannel.appendLine(
+    mdShieldChannel.appendLine(
       "Local configuration detected but had not correctly loaded."
     );
     return;
   }
 
   if (!("types" in config)) {
-    mdguardChannel.appendLine(
+    mdShieldChannel.appendLine(
       "Local configuration doesn't provide proper types field"
     );
     return;
   }
 
-  mdguardChannel.appendLine("Activate MD Guard with config");
+  mdShieldChannel.appendLine("Activate MD Guard with config");
 
-  context.subscriptions.push(mdguardChannel);
+  context.subscriptions.push(mdShieldChannel);
 
   // Use DiagnosticCollection to provide info
 
@@ -134,7 +133,7 @@ export function deactivate() {}
 const updateDiagnostics = async (
   document: vscode.TextDocument,
   collection: vscode.DiagnosticCollection,
-  mdGuardConfig: MdGuardConfig
+  mdShieldConfig: MdShieldConfig
 ): Promise<void> => {
   collection.clear();
 
@@ -160,7 +159,7 @@ const updateDiagnostics = async (
                 new vscode.Position(0, 1)
               ),
               severity: vscode.DiagnosticSeverity.Error,
-              source: "mdguard",
+              source: "MDShield",
               message: err.message,
             },
           ]);
@@ -170,7 +169,7 @@ const updateDiagnostics = async (
 
     if (Object.keys(data).length !== 0) {
       if (!("type" in data)) {
-        if (mdGuardConfig.strict) {
+        if (mdShieldConfig.strict) {
           collection.set(document.uri, [
             {
               code: "",
@@ -179,20 +178,20 @@ const updateDiagnostics = async (
                 new vscode.Position(0, 1)
               ),
               severity: vscode.DiagnosticSeverity.Error,
-              source: "mdguard",
+              source: "MDShield",
               message:
-                "MdGuard is under strict mode, but it can not find the type field in markdown's meta. " +
-                "You can either set MdGuard at non-strict mode, or add type into your frontmatter",
+                "MDShield is under strict mode, but it can not find the type field in markdown's meta. " +
+                "You can either set MDShield at non-strict mode, or add type into your frontmatter",
             },
           ]);
         }
         return;
       }
 
-      if (mdGuardConfig.strict) {
+      if (mdShieldConfig.strict) {
         strictValidate(
           document,
-          mdGuardConfig.types[data.type as string] as MdGuardType,
+          mdShieldConfig.types[data.type as string] as MdShieldType,
           data.type,
           data,
           diagnostics,
@@ -201,7 +200,7 @@ const updateDiagnostics = async (
       } else {
         nonStrictValidate(
           document,
-          mdGuardConfig.types[data.type as string] as MdGuardType,
+          mdShieldConfig.types[data.type as string] as MdShieldType,
           data,
           diagnostics,
           { line: 0, offset: 0 }
@@ -214,7 +213,7 @@ const updateDiagnostics = async (
   }
 
   if (fileExtension === "mdx") {
-    if (mdGuardConfig.meta === "frontmatter") {
+    if (mdShieldConfig.meta === "frontmatter") {
       let data: { [key: string]: any } = {};
 
       try {
@@ -231,7 +230,7 @@ const updateDiagnostics = async (
                   new vscode.Position(0, 1)
                 ),
                 severity: vscode.DiagnosticSeverity.Error,
-                source: "mdguard",
+                source: "MDShield",
                 message: err.message,
               },
             ]);
@@ -241,7 +240,7 @@ const updateDiagnostics = async (
 
       if (Object.keys(data).length !== 0) {
         if (!("type" in data)) {
-          if (mdGuardConfig.strict) {
+          if (mdShieldConfig.strict) {
             collection.set(document.uri, [
               {
                 code: "",
@@ -250,20 +249,20 @@ const updateDiagnostics = async (
                   new vscode.Position(0, 1)
                 ),
                 severity: vscode.DiagnosticSeverity.Error,
-                source: "mdguard",
+                source: "MDShield",
                 message:
-                  "MdGuard is under strict mode, but it can not find the type field in markdown's meta. " +
-                  "You can either set MdGuard at non-strict mode, or add type into your frontmatter",
+                  "MDShield is under strict mode, but it can not find the type field in markdown's meta. " +
+                  "You can either set MDShield at non-strict mode, or add type into your frontmatter",
               },
             ]);
           }
           return;
         }
 
-        if (mdGuardConfig.strict) {
+        if (mdShieldConfig.strict) {
           strictValidate(
             document,
-            mdGuardConfig.types[data.type as string] as MdGuardType,
+            mdShieldConfig.types[data.type as string] as MdShieldType,
             data.type,
             data,
             diagnostics,
@@ -272,7 +271,7 @@ const updateDiagnostics = async (
         } else {
           nonStrictValidate(
             document,
-            mdGuardConfig.types[data.type as string] as MdGuardType,
+            mdShieldConfig.types[data.type as string] as MdShieldType,
             data,
             diagnostics,
             { line: 0, offset: 0 }
@@ -280,7 +279,7 @@ const updateDiagnostics = async (
         }
         collection.set(document.uri, diagnostics);
       }
-    } else if (mdGuardConfig.meta === "export") {
+    } else if (mdShieldConfig.meta === "export") {
       // const module = await import(`${document.uri.path}?update=${new Date()}`);
       // console.log(module.meta);
       // const source = fs.readFileSync(document.uri.path);
@@ -293,7 +292,7 @@ const updateDiagnostics = async (
 
 const strictValidate = (
   document: vscode.TextDocument,
-  type: MdGuardType,
+  type: MdShieldType,
   typeName: string,
   meta: Meta,
   diagnostics: vscode.Diagnostic[],
@@ -317,7 +316,7 @@ const strictValidate = (
         code: "",
         range: new vscode.Range(textPosition.start, textPosition.end),
         severity: vscode.DiagnosticSeverity.Error,
-        source: "mdguard",
+        source: "MDShield",
         message: `${k} is not existed in type ${typeName}`,
       });
       return;
@@ -332,7 +331,7 @@ const strictValidate = (
 
       strictValidate(
         document,
-        type[k] as MdGuardType,
+        type[k] as MdShieldType,
         typeName,
         v as Meta,
         diagnostics,
@@ -377,7 +376,7 @@ const strictValidate = (
 
 const nonStrictValidate = (
   document: vscode.TextDocument,
-  type: MdGuardType,
+  type: MdShieldType,
   meta: Meta,
   diagnostics: vscode.Diagnostic[] = [],
   startPosition: getKeyPositionProps["startPosition"]
@@ -398,7 +397,7 @@ const nonStrictValidate = (
       });
       nonStrictValidate(
         document,
-        type[k] as MdGuardType,
+        type[k] as MdShieldType,
         v as Meta,
         diagnostics,
         { line: pos.start.line, offset: pos.start.character }
@@ -419,7 +418,7 @@ const nonStrictValidate = (
 
 type ValidateProps = {
   document: vscode.TextDocument;
-  type: MdGuardType;
+  type: MdShieldType;
   key: string;
   value: Meta | string | number | boolean | null;
   diagnostics: vscode.Diagnostic[];
@@ -452,7 +451,7 @@ const validate = ({
         code: "",
         range: new vscode.Range(textPosition.start, textPosition.end),
         severity: vscode.DiagnosticSeverity.Error,
-        source: "mdguard",
+        source: "MDShield",
         message: `The field ${key}'s type should be ${targetType}`,
       });
       return;
@@ -472,7 +471,7 @@ const validate = ({
         code: "",
         range: new vscode.Range(textPosition.start, textPosition.end),
         severity: vscode.DiagnosticSeverity.Error,
-        source: "mdguard",
+        source: "MDShield",
         message: `The field ${key}'s type should be ${targetType}`,
       });
       return;
@@ -539,7 +538,7 @@ const validate = ({
         code: "",
         range: new vscode.Range(textPosition.start, textPosition.end),
         severity: vscode.DiagnosticSeverity.Error,
-        source: "mdguard",
+        source: "MDShield",
         message: `The field ${key}'s type should be ${targetType}`,
       });
     }
