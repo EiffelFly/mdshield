@@ -1,5 +1,5 @@
 
-<h1 align="center"><img src="https://user-images.githubusercontent.com/57251712/185149358-38002cba-2674-4fe9-93e3-0e2b14d618fe.png" alt="The logo of MDShield"></h1>
+<h1 align="center"><img src="https://user-images.githubusercontent.com/57251712/185149358-38002cba-2674-4fe9-93e3-0e2b14d618fe.png" width="100" height="100" alt="The logo of MDShield"></h1>
 <h2 align="center">MD Shield</h1>
 <h2 align="center">Guard your markdown/mdx file's frontmatter/meta with vscode extension and in-project pre-build script.</h2>
 
