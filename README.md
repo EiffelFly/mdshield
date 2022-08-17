@@ -1,8 +1,6 @@
 
 # MD Shield
-## Guard your markdown/mdx file's frontmatter/meta with vscode extension and in-project pre-build script.
-
----
+Guard your markdown/mdx file's frontmatter/meta with vscode extension and in-project pre-build script.
 
 ## What is this 
 
