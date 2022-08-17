@@ -1,3 +1,4 @@
+import { YAMLException } from "js-yaml";
 import * as vscode from "vscode";
 
 export const getKeyPosition = (document: vscode.TextDocument, key: string) => {
@@ -43,4 +44,14 @@ export const sortedWorkspaceFolders = (): string[] => {
       : [];
   }
   return _sortedWorkspaceFolders;
+};
+
+export const isYmalException = (e: unknown): e is YAMLException => {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "reason" in e &&
+    "message" in e &&
+    "name" in e
+  );
 };
