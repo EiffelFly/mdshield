@@ -54,6 +54,7 @@
   "dependencies": {
     "@mdx-js/mdx": "^2.1.2",
     "glob": "^8.0.3",
-    "gray-matter": "^4.0.3"
+    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.1.0"
   }
 }

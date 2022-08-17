@@ -16,6 +16,7 @@ specifiers:
   eslint: ^8.20.0
   glob: ^8.0.3
   gray-matter: ^4.0.3
+  js-yaml: ^4.1.0
   mocha: ^10.0.0
   typescript: ^4.7.4
 
@@ -23,6 +24,7 @@ dependencies:
   '@mdx-js/mdx': 2.1.2
   glob: 8.0.3
   gray-matter: 4.0.3
+  js-yaml: 4.1.0
 
 devDependencies:
   '@mdx-js/esbuild': 2.1.2_esbuild@0.15.3
@@ -430,7 +432,6 @@ packages:
 
   /argparse/2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
-    dev: true
 
   /array-union/2.1.0:
     resolution: {integrity: sha512-HGyxoOTYUyCM6stUe6EJgnd4EoewAI7zMdfqO+kGjnlZmBDz/cR5pf8r/cR4Wq60sL/p0IkcjUEEPwS3GFrIyw==}
@@ -1414,7 +1415,6 @@ packages:
     hasBin: true
     dependencies:
       argparse: 2.0.1
-    dev: true
 
   /json-schema-traverse/0.4.1:
     resolution: {integrity: sha512-xbbCH5dCYU5T8LcEhhuh7HJ88HXuW3qsI3Y0zOZFKfZEHcpWiHU/Jxzk629Brsab/mMiHQti9wMP+845RPe3Vg==}
