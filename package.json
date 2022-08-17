@@ -1,6 +1,6 @@
 {
-  "name": "nitro-intelligence",
-  "displayName": "nitro-intelligence",
+  "name": "mdshield",
+  "displayName": "MDShield",
   "description": "",
   "version": "0.0.1",
   "engines": {
@@ -23,6 +23,7 @@
       }
     ]
   },
+  "repository": "https://github.com/EiffelFly/mdguard",
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
     "compile": "tsc -p ./",
@@ -33,7 +34,9 @@
     "esbuild-base": "node ./esbuild.mjs",
     "esbuild": "pnpm run esbuild-base -- --sourcemap",
     "esbuild-watch": "pnpm run esbuild-base -- --sourcemap --watch",
-    "test-compile": "tsc -p ./"
+    "test-compile": "tsc -p ./",
+    "package": "pnpm vsce package --no-dependencies",
+    "publish": "pnpm vsce publish --no-dependencies"
   },
   "devDependencies": {
     "@mdx-js/esbuild": "^2.1.2",
@@ -56,5 +59,6 @@
     "glob": "^8.0.3",
     "gray-matter": "^4.0.3",
     "js-yaml": "^4.1.0"
-  }
+  },
+  "license": "MIT"
 }
