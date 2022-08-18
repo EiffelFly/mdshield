@@ -5,6 +5,7 @@ import {
   getFileExtension,
   getKeyPosition,
   getKeyPositionProps,
+  getMdShieldConfig,
   isYmalException,
 } from "./utils";
 
@@ -44,17 +45,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   let config = {} as MdShieldConfig;
 
-  try {
-    if (configFileExtension === "mjs") {
-      const module = await import(configUri.path);
-      config = module.default;
-    } else {
-      const module = require(configUri.path);
-      config = module.default;
-    }
-  } catch (err) {
-    console.log(err);
-  }
+  config = await getMdShieldConfig(configUri.path);
 
   let configWatcher = vscode.workspace.createFileSystemWatcher(
     new vscode.RelativePattern(folder, `**/${CONFIG_FILE_GLOB}`),
@@ -64,20 +55,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   configWatcher.onDidChange(async (uri) => {
-    try {
-      if (configFileExtension === "mjs") {
-        // We need to invalidate old cached config
-        const module = await import(`${uri.path}?update=${new Date()}`);
-        config = module.default;
-      } else {
-        // We need to invalidate old cached config
-        delete require.cache[uri.path];
-        const module = require(uri.path);
-        config = module.default;
-      }
-    } catch (err) {
-      console.log(err);
-    }
+    config = await getMdShieldConfig(uri.path);
   });
 
   context.subscriptions.push(configWatcher);

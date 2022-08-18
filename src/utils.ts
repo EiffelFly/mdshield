@@ -1,5 +1,6 @@
 import { YAMLException } from "js-yaml";
 import * as vscode from "vscode";
+import { MdShieldConfig } from "./types";
 
 /**
  * Use startLine to determine whether the match text is the right one.
@@ -101,4 +102,26 @@ export const isYmalException = (e: unknown): e is YAMLException => {
     "message" in e &&
     "name" in e
   );
+};
+
+export const getMdShieldConfig = async (path: string) => {
+  const configFileExtension = getFileExtension(path);
+  let config = {} as MdShieldConfig;
+
+  try {
+    if (configFileExtension === "mjs") {
+      // We need to invalidate old cached config
+      const module = await import(`${path}?update=${new Date()}`);
+      config = module.default;
+    } else {
+      // We need to invalidate old cached config
+      delete require.cache[path];
+      const module = require(path);
+      config = module.default;
+    }
+  } catch (err) {
+    console.log(err);
+  }
+
+  return config;
 };
