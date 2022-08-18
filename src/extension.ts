@@ -5,23 +5,12 @@ import {
   getFileExtension,
   getKeyPosition,
   getKeyPositionProps,
+  getMdShieldConfig,
   isYmalException,
 } from "./utils";
 
 const CONFIG_FILE_GLOB = "{mdshield,mdshield.config}.{js,mjs}";
 const mdShieldChannel = vscode.window.createOutputChannel("mdshield");
-
-// Get config
-/**
- * {
- *     // make sure every markdown file need to have type key-value in frontmatter
- *     // the frontmatter need to be identical to the type, every field should exist.
- *     // In strict=false mode, mdshield will only validate the registered type.
- *    strict: boolean
- * }
- */
-
-// Be careful of null and undefined
 
 export async function activate(context: vscode.ExtensionContext) {
   const collection = vscode.languages.createDiagnosticCollection("mdshield");
@@ -40,23 +29,7 @@ export async function activate(context: vscode.ExtensionContext) {
     mdShieldChannel.appendLine("Local configuration not detected");
   }
 
-  const configPathArr = configUri.path.split("/");
-  const configFileNameArr = configPathArr[configPathArr.length - 1].split(".");
-  const configFileExtension = configFileNameArr[configFileNameArr.length - 1];
-
-  let config = {} as MdShieldConfig;
-
-  try {
-    if (configFileExtension === "mjs") {
-      const module = await import(configUri.path);
-      config = module.default;
-    } else {
-      const module = require(configUri.path);
-      config = module.default;
-    }
-  } catch (err) {
-    console.log(err);
-  }
+  let config = await getMdShieldConfig(configUri.path);
 
   let configWatcher = vscode.workspace.createFileSystemWatcher(
     new vscode.RelativePattern(folder, `**/${CONFIG_FILE_GLOB}`),
@@ -66,20 +39,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   configWatcher.onDidChange(async (uri) => {
-    try {
-      if (configFileExtension === "mjs") {
-        // We need to invalidate old cached config
-        const module = await import(`${uri.path}?update=${new Date()}`);
-        config = module.default;
-      } else {
-        // We need to invalidate old cached config
-        delete require.cache[uri.path];
-        const module = require(uri.path);
-        config = module.default;
-      }
-    } catch (err) {
-      console.log(err);
-    }
+    config = await getMdShieldConfig(uri.path);
   });
 
   context.subscriptions.push(configWatcher);
@@ -98,7 +58,7 @@ export async function activate(context: vscode.ExtensionContext) {
     return;
   }
 
-  mdShieldChannel.appendLine("Activate MD Guard with config");
+  mdShieldChannel.appendLine("Activate MD shield with config");
 
   context.subscriptions.push(mdShieldChannel);
 
@@ -140,7 +100,7 @@ const updateDiagnostics = async (
   if (!document) return;
 
   let diagnostics: vscode.Diagnostic[] = [];
-  const fileExtension = getFileExtension(document);
+  const fileExtension = getFileExtension(document.uri.path);
 
   if (fileExtension === "md") {
     let data: { [key: string]: any } = {};
@@ -307,14 +267,14 @@ const strictValidate = (
     }
 
     if (!(k in type)) {
-      const textPosition = getKeyPosition({
+      const keyPos = getKeyPosition({
         document,
         key: k,
         startPosition,
       });
       diagnostics.push({
         code: "",
-        range: new vscode.Range(textPosition.start, textPosition.end),
+        range: new vscode.Range(keyPos.start, keyPos.end),
         severity: vscode.DiagnosticSeverity.Error,
         source: "MDShield",
         message: `${k} is not existed in type ${typeName}`,
@@ -323,7 +283,7 @@ const strictValidate = (
     }
 
     if (typeof type[k] === "object" && typeof v === "object" && v !== null) {
-      const pos = getKeyPosition({
+      const objectPos = getKeyPosition({
         document,
         key: k,
         startPosition,
@@ -335,12 +295,12 @@ const strictValidate = (
         typeName,
         v as Meta,
         diagnostics,
-        { line: pos.start.line, offset: pos.start.character }
+        { line: objectPos.start.line, offset: objectPos.start.character }
       );
       return;
     }
 
-    validate({
+    validatePrimitives({
       document,
       type,
       diagnostics,
@@ -371,7 +331,7 @@ const strictValidate = (
  * }
  * ```
  *
- * Non strict validate will only validate title and description and leave meta field untouch.
+ * Non strict validate will only validate title and description and leave draft field untouch.
  */
 
 const nonStrictValidate = (
@@ -390,7 +350,7 @@ const nonStrictValidate = (
     }
 
     if (typeof type[k] === "object" && typeof v === "object" && v !== null) {
-      const pos = getKeyPosition({
+      const objectPos = getKeyPosition({
         document,
         key: k,
         startPosition,
@@ -400,12 +360,12 @@ const nonStrictValidate = (
         type[k] as MdShieldType,
         v as Meta,
         diagnostics,
-        { line: pos.start.line, offset: pos.start.character }
+        { line: objectPos.start.line, offset: objectPos.start.character }
       );
       return;
     }
 
-    validate({
+    validatePrimitives({
       document,
       type,
       diagnostics,
@@ -425,7 +385,7 @@ type ValidateProps = {
   startPosition: getKeyPositionProps["startPosition"];
 };
 
-const validate = ({
+const validatePrimitives = ({
   document,
   type,
   key,

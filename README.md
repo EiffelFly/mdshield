@@ -1,12 +1,12 @@
 
-# MD Shield
+## MD Shield
 Guard your markdown/mdx file's frontmatter/meta with vscode extension and in-project pre-build script.
 
-## What is this 
+### What is this 
 
 MDShield will highlight the type error of your markdown frontmatter. And you could use MDShield as a pre-build script to ensure every markdown file's frontmatter in your project is correct.
 
-## How to use
+### How to use
 
 1. Add `mdshield.config.mjs|js` at the root of your project.
 
@@ -46,9 +46,11 @@ module.export = {
 
 3. Enjoy the type intelligence MDShield provided.
 
-## Configuration
+### Configuration
 
-### strict(boolean)
+#### strict
+
+`strict: true | false`
 
 - strict mode:
   - Every markdown/mdx file's frontmatter need to set `type` field.
@@ -59,15 +61,25 @@ module.export = {
   - MDShield won't check the undeclared field.
   - MDShield won't check the undefined field.
 
-### meta(`frontmatter`)
+### meta
 
-We currently only support frontmatter in markdown and mdx file.
+`meta: frontmatter`
 
-### types(`Object`)
+We currently only support frontmatter in markdown and mdx file. We will support export object in the future.
 
-#### About the type name
+```js
+export meta = {
+  ...
+}
+```
 
-The types you want your frontmatter to have. The first key is the name of this type. 
+### types
+
+`types: {}`
+
+#### About the typeName
+
+The types you want your frontmatter to have. The first layer is the name of this type. 
 
 ```js
 
@@ -97,6 +109,42 @@ The type declaration is similar to Typescript, we support string, number, object
 - `string | number | null` = The field allows string, number or null/undefined.
 - `string | 123` = The field allows string and number 123 specifically.
 - `number | foo` = The field allows number and string foo specifically. 
+
+#### Example
+
+Let's say you have this config.
+
+```js
+// mdshield.config.mjs
+
+const config = {
+  strict: true,
+  meta: "frontmatter",
+  types: {
+    "hello": {
+      title: "string",
+      description: "string",
+      date: "number | unspecific",
+      author: "string"
+    }
+  }
+}
+
+export default config
+```
+
+And you have this markdown file.
+
+
+```md
+---
+type: hello <-- You need to specific typeName.
+title: How are you <-- string, passed!
+description: I am good <-- string, passed!
+data: unspecific <-- string but unspecific is in the type, passed!
+author: 234 <-- number, failed!
+---
+```
 
 ## License
 
