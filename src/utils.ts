@@ -65,8 +65,8 @@ export const getKeyPosition = ({
   }
 };
 
-export const getFileExtension = (document: vscode.TextDocument): string => {
-  const pathArr = document.uri.path.split("/");
+export const getFileExtension = (path: string): string => {
+  const pathArr = path.split("/");
   const fileNameArr = pathArr[pathArr.length - 1].split(".");
   const fileExtension = fileNameArr[fileNameArr.length - 1];
   return fileExtension;

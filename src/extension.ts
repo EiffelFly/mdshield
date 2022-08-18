@@ -40,9 +40,7 @@ export async function activate(context: vscode.ExtensionContext) {
     mdShieldChannel.appendLine("Local configuration not detected");
   }
 
-  const configPathArr = configUri.path.split("/");
-  const configFileNameArr = configPathArr[configPathArr.length - 1].split(".");
-  const configFileExtension = configFileNameArr[configFileNameArr.length - 1];
+  const configFileExtension = getFileExtension(configUri.path);
 
   let config = {} as MdShieldConfig;
 
@@ -140,7 +138,7 @@ const updateDiagnostics = async (
   if (!document) return;
 
   let diagnostics: vscode.Diagnostic[] = [];
-  const fileExtension = getFileExtension(document);
+  const fileExtension = getFileExtension(document.uri.path);
 
   if (fileExtension === "md") {
     let data: { [key: string]: any } = {};
