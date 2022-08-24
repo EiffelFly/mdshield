@@ -1,7 +1,8 @@
 {
   "name": "mdshield",
   "displayName": "MDShield",
-  "description": "",
+  "publisher": "Summerbud",
+  "description": "Guard your markdown/mdx file's frontmatter/meta with this vscode extension.",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.69.0"
@@ -35,8 +36,8 @@
     "esbuild": "pnpm run esbuild-base -- --sourcemap",
     "esbuild-watch": "pnpm run esbuild-base -- --sourcemap --watch",
     "test-compile": "tsc -p ./",
-    "package": "pnpm vsce package --no-dependencies",
-    "publish": "pnpm vsce publish --no-dependencies"
+    "vs-package": "pnpm vsce package --no-dependencies",
+    "vs-publish": "pnpm vsce publish --no-dependencies"
   },
   "devDependencies": {
     "@mdx-js/esbuild": "^2.1.2",
