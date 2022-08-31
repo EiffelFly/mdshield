@@ -146,6 +146,12 @@ author: 234 <-- number, failed!
 ---
 ```
 
+## Roadmap
+
+- Support MDX export meta.
+- Support checking the whole project before build process
+- Support checking the markdown file syntax
+
 ## License
 
 MIT
