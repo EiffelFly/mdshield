@@ -3,7 +3,7 @@
   "displayName": "MDShield",
   "publisher": "Summerbud",
   "description": "Guard your markdown/mdx file's frontmatter/meta with this vscode extension.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.69.0"
   },
