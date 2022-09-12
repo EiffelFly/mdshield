@@ -6,6 +6,7 @@
     "rootDir": "src",
     "lib": ["ES2020"],
     "outDir": "out",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "esModuleInterop": true
   }
 }
