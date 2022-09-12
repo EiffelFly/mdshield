@@ -3,6 +3,7 @@
     "skipLibCheck": true,
     "strict": true,
     "declaration": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "sourceMap": true
   }
 }
