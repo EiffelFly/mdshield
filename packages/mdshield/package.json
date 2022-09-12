@@ -1,0 +1,14 @@
+{
+  "name": "mdshield",
+  "description": "Guard your markdown/mdx file's frontmatter/meta with this vscode extension.",
+  "version": "0.0.1",
+  "type": "module",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "16.x",
+    "tsx": "^3.9.0"
+  },
+  "scripts": {
+    "test": "node --loader tsx --test"
+  }
+}
