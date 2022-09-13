@@ -12,3 +12,15 @@ export type MdShieldPrimitives =
   | MdShieldValue
   | boolean
   | null;
+
+export type MdShieldDiagnostic = {
+  key: string;
+  value: MdShieldPrimitives;
+  pass: boolean;
+  [k: string]: any;
+};
+
+export type MdShieldError = {
+  error: boolean;
+  message: string;
+};
